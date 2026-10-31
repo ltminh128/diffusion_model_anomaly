@@ -1,0 +1,11 @@
+# Install PyTorch first with the CUDA 12.8 index (see README).
+numpy
+scipy
+opencv-python
+scikit-learn
+matplotlib
+tqdm
+pyyaml
+einops
+tensorboard
+pytest

@@ -1,0 +1,15 @@
+# Dataset locations. Datasets live outside the repo so they are never committed.
+shanghaitech:
+  root: C:/Users/Admin/datasets/shanghaitech
+  # Expected layout after scripts/extract_frames.py:
+  #   training/videos/01_001.avi ...      (original download)
+  #   training/frames/01_001/0000.jpg ... (extracted by our script)
+  #   testing/frames/01_0014/000.jpg ...  (original download)
+  #   testing/test_frame_mask/01_0014.npy (frame-level ground truth, 1 = anomaly)
+
+# Leave-scenes-out folds requested by Prof Wang: 13 scenes -> 4 / 4 / 5.
+# Scene ID is the two-digit prefix of the video name (e.g. "01" in 01_0014).
+leave_scenes_out_folds:
+  - ["01", "02", "03", "04"]
+  - ["05", "06", "07", "08"]
+  - ["09", "10", "11", "12", "13"]

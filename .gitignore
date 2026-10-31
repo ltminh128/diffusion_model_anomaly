@@ -1,0 +1,28 @@
+# Data and outputs (never commit)
+datasets/
+*.avi
+*.mp4
+*.npy
+*.npz
+checkpoints/
+runs/
+outputs/
+*.pt
+*.pth
+*.ckpt
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Baseline repos are cloned separately (see baselines/README.md)
+baselines/*/repo/
+
+# LaTeX build files
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.fdb_latexmk
+*.fls
