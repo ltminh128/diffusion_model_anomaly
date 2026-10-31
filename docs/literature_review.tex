@@ -16,7 +16,7 @@
 \maketitle
 
 \begin{abstract}
-This review surveys the research areas that the proposed project brings together: (i)~unsupervised video anomaly detection (VAD) on the ShanghaiTech Campus benchmark, (ii)~denoising diffusion probabilistic models and their guidance mechanisms, (iii)~recent diffusion-based VAD methods, and (iv)~physics-informed learning and physics-aware video generation. We identify the research gap that the project addresses: diffusion-based VAD methods use motion only as a conditioning signal, and none of them imposes explicit differentiable kinematic residuals during reverse sampling or uses those residuals as an anomaly score. We also list candidate constraint formulations, baselines and evaluation protocols, and point out open risks that affect the project's design.
+This review surveys the research areas that the proposed project brings together: (i)~unsupervised video anomaly detection (VAD) on the ShanghaiTech Campus benchmark, (ii)~denoising diffusion probabilistic models and their guidance mechanisms, (iii)~recent diffusion-based VAD methods, (iv)~physics-informed learning and physics-aware video generation, and (v)~the closest prior work, physics-informed diffusion models for anomaly detection in trajectories and time series. We identify the research gap that the project addresses: diffusion-based VAD methods use motion only as a conditioning signal, while physics-informed diffusion anomaly detectors outside video rely on known governing equations applied only in the training loss. None of them imposes differentiable kinematic residuals during reverse sampling or uses those residuals as an anomaly score. We also list candidate constraint formulations, baselines and evaluation protocols, and point out open risks that affect the project's design.
 \end{abstract}
 
 %=====================================================================
@@ -24,8 +24,10 @@ This review surveys the research areas that the proposed project brings together
 Video anomaly detection aims to localise, in time, events that deviate from normal behaviour in a video stream. In the \emph{unsupervised} (or one-class) setting, only normal videos are available during training, and at test time each frame receives an anomaly score. The standard metric is the frame-level area under the ROC curve (AUROC). Most existing generative approaches score anomalies by pixel-level reconstruction or prediction error~\cite{hasan2016learning,liu2018future}. These scores are sensitive to nuisance factors such as illumination changes and sensor noise. The proposed project instead embeds kinematic priors into a denoising diffusion model~\cite{ho2020ddpm} so that anomalies are detected as violations of learned, physically structured normal dynamics.
 
 %=====================================================================
-\section{Benchmark: ShanghaiTech Campus}
+\section{Benchmarks}
 The ShanghaiTech Campus dataset was introduced by Luo \emph{et al.}~\cite{luo2017revisit}. It contains 13 scenes with different lighting conditions and camera angles, 330 training videos and 107 test videos (about 317k frames in total), and 130 abnormal events. The anomalies include cyclists, skateboarders and vehicles in pedestrian areas, running, chasing and fighting. Most of these events are \emph{motion} anomalies (unusual speed, acceleration or type of movement) rather than appearance anomalies, which makes the dataset well suited to a kinematics-driven approach. Results should state whether the AUROC is micro-averaged (all frames pooled) or macro-averaged (averaged per video), because published numbers mix the two.
+
+CUHK Avenue~\cite{lu2013abnormal} and UCSD Ped2~\cite{mahadevan2010anomaly} are smaller single-scene benchmarks that are reported by almost every VAD method, so they are needed for comparison with published results. In all three datasets, every test scene also appears in the training set, so none of them measures generalisation to new environments. Two newer benchmarks address this limitation. UBnormal~\cite{acsintoae2022ubnormal} consists of synthetic videos rendered in 29 virtual scenes and provides train, validation and test splits with disjoint scenes and disjoint anomaly types. It was designed for supervised open-set VAD, but it can be used in the one-class setting by training only on its normal videos. NWPU Campus~\cite{cao2023new} is a large real-world benchmark with 43 scenes. It includes \emph{scene-dependent} anomalies, i.e.\ events that are normal in one scene and abnormal in another, and it also defines an anomaly-anticipation task. Scene-dependent anomalies are directly relevant to the scene-conditioned velocity prior proposed in Section~\ref{sec:constraints}.
 
 %=====================================================================
 \section{Deep Unsupervised Video Anomaly Detection}
@@ -36,8 +38,11 @@ Convolutional autoencoders~\cite{hasan2016learning} learn to reconstruct normal 
 \subsection{Prediction-based methods}
 Liu \emph{et al.}~\cite{liu2018future} reformulated VAD as \emph{future-frame prediction}. A U-Net generator is trained with intensity, gradient, adversarial and \emph{optical-flow consistency} losses, and the anomaly score is the per-video normalised PSNR of the predicted frame. The flow loss is an early, implicit motion constraint and the most direct predecessor of the present project. HF$^2$-VAD~\cite{liu2021hybrid} extends this line by reconstructing optical flow with a memory-augmented autoencoder and then predicting frames conditioned on that flow. Nguyen and Meunier~\cite{nguyen2019anomaly} learn the correspondence between appearance and motion explicitly.
 
+\subsection{Self-supervised and efficient methods}
+Wang \emph{et al.}~\cite{wang2022jigsaw} train a network to solve \emph{decoupled spatio-temporal jigsaw puzzles}: it must recover the spatial arrangement of shuffled patches and the temporal order of shuffled frames of object-centric clips. Normal motion is easy to re-order, whereas abnormal motion is not, and the method reaches 84.3\% micro AUROC on ShanghaiTech without any generative model. AED-MAE~\cite{ristea2024selfdistilled} is a lightweight masked autoencoder with a teacher and a student decoder. Its anomaly map combines the teacher reconstruction error, the teacher--student discrepancy and the output of a head trained on synthetic anomalies. It reports 79.1\% micro and 84.7\% macro AUROC on ShanghaiTech at about 1,655 frames per second. It therefore sets the speed bar against which the cost of diffusion sampling must be justified.
+
 \subsection{Object-centric, attribute-based and pose-based methods}
-Ionescu \emph{et al.}~\cite{ionescu2019object} and Georgescu \emph{et al.}~\cite{georgescu2021anomaly} detect objects first and then model each object, which substantially improves ShanghaiTech results. Reiss and Hoshen~\cite{reiss2022attribute} show that simple \emph{attributes}, namely per-object velocity and pose, combined with density estimation reach near state-of-the-art accuracy. This is strong evidence that kinematic information carries most of the discriminative signal on this benchmark. Pose-based methods (MPED-RNN~\cite{morais2019learning}, GEPC~\cite{markovitz2020graph}, STG-NF~\cite{hirschorn2023normalizing}) model human skeleton trajectories, which is an explicitly kinematic representation. STG-NF reaches roughly 86\% AUROC on ShanghaiTech with a very small model.
+Ionescu \emph{et al.}~\cite{ionescu2019object} and Georgescu \emph{et al.}~\cite{georgescu2021anomaly} detect objects first and then model each object, which substantially improves ShanghaiTech results. Reiss and Hoshen~\cite{reiss2022attribute} show that simple \emph{attributes}, namely per-object velocity and pose, combined with density estimation reach 85.9\% micro and 89.6\% macro AUROC on ShanghaiTech. This is strong evidence that kinematic information carries most of the discriminative signal on this benchmark. Pose-based methods (MPED-RNN~\cite{morais2019learning}, GEPC~\cite{markovitz2020graph}, STG-NF~\cite{hirschorn2023normalizing}) model human skeleton trajectories, which is an explicitly kinematic representation. STG-NF reaches roughly 86\% AUROC on ShanghaiTech with a very small model. COSKAD~\cite{flaborea2024coskad} encodes skeletal kinematics with a graph convolutional network and \emph{contracts} the embeddings of normal motion towards a compact region of the latent space; the distance from that region is the anomaly score. COSKAD and MoCoDAD~\cite{flaborea2023multimodal} are evaluated on the human-related subset of ShanghaiTech (HR-STC), where they reach 77.1\% and 77.6\% AUROC respectively. HR-STC results are not directly comparable with full-ShanghaiTech results, because non-human anomalies such as vehicles are removed.
 
 %=====================================================================
 \section{Denoising Diffusion Models}
@@ -68,9 +73,72 @@ where $\mathbf{x}_{t-1}'$ is the unguided update and $\zeta_t$ is a step size. U
 
 %=====================================================================
 \section{Diffusion Models for Video Anomaly Detection}
-Tur \emph{et al.}~\cite{tur2023exploring,tur2023unsupervised} were among the first to apply diffusion models to unsupervised VAD, and the second of these studies conditions the model on compact motion representations. Yan \emph{et al.}~\cite{yan2023feature} propose a feature-prediction diffusion model that works in a feature space rather than on pixels. MoCoDAD~\cite{flaborea2023multimodal} applies diffusion to skeleton motion: it generates several plausible future poses and scores anomalies by comparing their distribution with the observed motion. Zhou \emph{et al.}~\cite{zhou2025video} (MA-PDM) propose a patch-based diffusion model conditioned on motion and appearance and report results on ShanghaiTech. Two recent surveys cover the wider field~\cite{liu2025survey,surveyadg2025}.
+Tur \emph{et al.}~\cite{tur2023exploring,tur2023unsupervised} were among the first to apply diffusion models to unsupervised VAD, and the second of these studies conditions the model on compact motion representations. Yan \emph{et al.}~\cite{yan2023feature} propose a feature-prediction diffusion model that works in a feature space rather than on pixels. MoCoDAD~\cite{flaborea2023multimodal} applies diffusion to skeleton motion: it generates several plausible future poses and scores anomalies by comparing their distribution with the observed motion. Zhou \emph{et al.}~\cite{zhou2025video} (MA-PDM) propose a patch-based diffusion model conditioned on motion and appearance, which reaches 79.2\% AUROC on ShanghaiTech. Two recent surveys cover the wider field~\cite{liu2025survey,surveyadg2025}.
 
-\paragraph{Research gap.} In all of the methods above, motion enters only as a \emph{conditioning input}. To the best of our knowledge, no existing work (i)~imposes explicit, differentiable kinematic residuals as guidance during the reverse diffusion process, (ii)~uses the magnitude of these residuals as part of the anomaly score, or (iii)~studies systematically how to weight such physical constraints against the standard diffusion objective.
+In all of these video methods, motion enters only as a \emph{conditioning input}; none of them encodes a physical law or a kinematic constraint. Physics-informed diffusion for anomaly detection does exist outside video, however, and these works are the closest to the proposed project. They are reviewed next.
+
+%=====================================================================
+\section{Closest Work: Physics-Informed Diffusion for Anomaly Detection and Motion}
+\label{sec:closest}
+
+\paragraph{Physics-informed diffusion for trajectory anomalies.}
+Sharma \emph{et al.}~\cite{sharma2025pidpm} propose Pi-DPM, a diffusion model that detects anomalous GPS trajectories of vessels and road vehicles. Each trajectory point holds position, speed and heading. The denoiser is conditioned on the trajectories of neighbouring objects, and a physics-informed decoder enforces a kinematic bicycle model with state $(x,y,\psi)$ and dynamics $\dot{x}=v\cos\psi$, $\dot{y}=v\sin\psi$, $\dot{\psi}=v\tan\delta/L$. The kinematic residuals enter the \emph{training} loss as a regularisation term, $\mathcal{L}=\gamma_1\mathcal{L}_{\text{VLB}}+\gamma_2\mathcal{L}_{\text{Rec}}+\gamma_3\mathcal{L}_{\text{Phy}}$, and a trajectory is flagged when its reconstruction error exceeds a threshold.
+\emph{How our method differs.}
+(i)~Pi-DPM works on a low-dimensional, explicitly observed state with a known vehicle model. In video there is no observed state; kinematics must be inferred from pixels through optical flow, and different objects in a scene follow different dynamics.
+(ii)~Pi-DPM uses physics only to regularise training. We also apply the residual as gradient guidance at every DDIM step (Eq.~\ref{eq:dps}), and we compare training-only, sampling-only and combined use.
+(iii)~Pi-DPM scores anomalies by reconstruction error alone. Our score adds the physics residual as a separate term (Eq.~\ref{eq:score}).
+(iv)~The bicycle model is a hard physical law. Our priors, bounded acceleration and a scene-conditioned velocity density, describe physically structured \emph{normal} dynamics, because a cyclist or a running person does not violate any physical law.
+
+\paragraph{Physics-informed diffusion for multivariate time series.}
+Soni \emph{et al.}~\cite{soni2025pidm} train a diffusion model on normal sensor time series from industrial systems: motor bearings, a drive system and an air compressor, plus a simulated predator--prey system. Known governing equations, such as Ohm's law, the ideal gas law, rigid-body drive dynamics and the Lotka--Volterra equations, are written as residuals $E(\mathcal{D},\hat{\mathbf{x}}_0)$ on the predicted clean signal and added to the training loss with a weight $\bar\lambda_t$ that depends on the diffusion step. The weight decays to zero at high noise levels, where finite-difference derivatives of $\hat{\mathbf{x}}_0$ are unreliable. The anomaly score is the diffusion loss alone. The physics term improves results on three of the four datasets but slightly hurts on the motor-bearing data.
+\emph{How our method differs.}
+(i)~Video has no known governing equation of the form $E(\mathcal{D},\mathbf{x})=0$, so our residuals are generic kinematic constraints and a prior learned from normal data.
+(ii)~We use physics at sampling time and in the anomaly score, not only in training.
+(iii)~Their step-dependent weight $\bar\lambda_t$ is directly relevant to our third research question. We will adopt the same idea for both the training weight $\lambda$ and the guidance step size $\zeta_t$, applying physics mainly at low-noise steps, and we will compare it with a constant weight.
+
+\paragraph{Physics-guided motion diffusion.}
+PhysDiff~\cite{yuan2023physdiff} is not an anomaly detector but a generator of human motion. It is the clearest example of physics applied \emph{inside} the denoising loop. At selected denoising steps, the predicted clean motion $\hat{\mathbf{x}}_0$ is \emph{projected} onto the set of physically plausible motions by a physics simulator, in which a reinforcement-learning imitation policy tracks the motion. The projected motion then replaces $\hat{\mathbf{x}}_0$ in the next update. Training is unchanged, and projection is skipped at high noise levels because it is expensive and unhelpful there.
+\emph{How our method differs.}
+(i)~The simulator in PhysDiff is non-differentiable and the projection is a hard replacement. We use differentiable residuals and soft gradient guidance, which needs no simulator or policy and is cheap enough to run at test time on every frame.
+(ii)~PhysDiff makes generated samples \emph{more} physical. We exploit the \emph{gap} between the unguided prediction and the physics-consistent prediction as an anomaly signal.
+(iii)~PhysDiff confirms empirically that physics is best applied at late, low-noise steps. This informs our schedule for $\zeta_t$.
+
+\paragraph{Summary.}
+Table~\ref{tab:summary} lists, for each diffusion-based and physics-informed method, where physics is used and the reported ShanghaiTech result.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+\textbf{Method} & \textbf{Data} & \textbf{Train} & \textbf{Sampling} & \textbf{Score} & \textbf{STC AUROC (\%)} \\
+\midrule
+Liu \emph{et al.}~\cite{liu2018future} & video & flow loss & -- & -- & 72.8$^{a}$ \\
+Tur \emph{et al.}~\cite{tur2023unsupervised} & video & -- & -- & -- & 77.2$^{b}$ \\
+FPDM~\cite{yan2023feature} & video & -- & -- & -- & 78.6$^{c}$ \\
+MA-PDM~\cite{zhou2025video} & video & -- & -- & -- & 79.2 \\
+MoCoDAD~\cite{flaborea2023multimodal} & skeleton & -- & -- & -- & 77.6$^{d}$ \\
+\midrule
+Pi-DPM~\cite{sharma2025pidpm} & trajectories & \checkmark & -- & -- & n/a \\
+Soni \emph{et al.}~\cite{soni2025pidm} & time series & \checkmark & -- & -- & n/a \\
+PIDM~\cite{bastek2025pidm} & PDE fields & \checkmark & -- & n/a & n/a \\
+DiffusionPDE~\cite{huang2024diffusionpde} & PDE fields & -- & \checkmark & n/a & n/a \\
+PhysDiff~\cite{yuan2023physdiff} & human motion & -- & \checkmark$^{e}$ & n/a & n/a \\
+\midrule
+\textbf{Ours} & video & \checkmark & \checkmark & \checkmark & to be measured \\
+\bottomrule
+\end{tabular}
+\caption{Where physics is used in diffusion-based and physics-informed methods, and their reported ShanghaiTech Campus (STC) frame-level AUROC. ``n/a'': not an anomaly detector or not evaluated on ShanghaiTech.
+$^{a}$Micro AUROC. Liu \emph{et al.} is not a diffusion model and is listed because its optical-flow loss is the earliest motion constraint used for VAD.
+$^{b}$Unsupervised protocol with a different train/test split, not comparable with the one-class protocol.
+$^{c}$As reported in~\cite{zhou2025video}.
+$^{d}$Human-related subset HR-STC.
+$^{e}$Non-differentiable simulator projection at selected steps.
+Papers other than Liu \emph{et al.} do not state whether their AUROC is micro or macro.}
+\label{tab:summary}
+\end{table}
+
+\paragraph{Research gap.} No existing VAD method encodes physics: motion is used only as a conditioning input. Outside video, physics-informed diffusion anomaly detectors~\cite{sharma2025pidpm,soni2025pidm} rely on known governing equations of a low-dimensional state and apply them only in the training loss. To the best of our knowledge, no existing work (i)~imposes differentiable kinematic residuals as guidance during reverse diffusion for anomaly detection, (ii)~uses the magnitude of these residuals as a separate term in the anomaly score, or (iii)~compares systematically the use of physics in training, in sampling and in both.
 
 %=====================================================================
 \section{Physics-Informed Learning and Physics-Aware Generation}
@@ -88,6 +156,7 @@ State-of-the-art video diffusion models often produce physically implausible mot
 
 %=====================================================================
 \section{Candidate Differentiable Kinematic Constraints}
+\label{sec:constraints}
 Let $\mathbf{I}_t$ denote a predicted frame and $\mathbf{F}_t=(u,v)$ its optical flow, estimated by a frozen differentiable network such as RAFT~\cite{teed2020raft}. The following residuals can all be computed on $\hat{\mathbf{x}}_0$:
 \begin{enumerate}[label=(\alph*)]
   \item \textbf{Brightness constancy}~\cite{horn1981determining}: $\;r_{\text{BC}}=I_x u+I_y v+I_t$, or its warping form $\|\mathbf{I}_{t+1}-\mathcal{W}(\mathbf{I}_t,\mathbf{F}_t)\|_1$.
@@ -99,6 +168,7 @@ A combined anomaly score for frame $t$ can then take the form
 \begin{equation}
 S_t=\alpha\,\tilde{S}^{\text{pred}}_t+\beta\,\tilde{S}^{\text{phys}}_t,\qquad
 S^{\text{phys}}_t=\textstyle\sum_k w_k\,r_k ,
+\label{eq:score}
 \end{equation}
 where $\tilde{\cdot}$ denotes per-video min--max normalisation, as in~\cite{liu2018future}.
 
@@ -106,9 +176,9 @@ where $\tilde{\cdot}$ denotes per-video min--max normalisation, as in~\cite{liu2
 \section{Critical Discussion and Open Risks}
 \begin{enumerate}
   \item \textbf{Anomalies do not violate physical laws.} A cyclist or a running person obeys Newtonian kinematics perfectly well. What they break is the scene-specific \emph{distribution} of normal motion. The ``physical prior'' should therefore be framed as physically structured normal dynamics (e.g.\ constraints (b) and (d)). Constraints such as (a) mainly help by reducing false positives caused by lighting changes and noise.
-  \item \textbf{Novelty must be stated precisely.} Flow losses~\cite{liu2018future} and motion-conditioned diffusion~\cite{tur2023unsupervised,flaborea2023multimodal,zhou2025video} already exist. The contribution lies in physics guidance at sampling time, a physics-residual anomaly score, and a principled way to balance the physics term against the diffusion objective.
-  \item \textbf{Generalisation to new environments.} The standard ShanghaiTech protocol includes every test scene in training. Testing the claim of generalising to new environments requires a leave-scenes-out split.
-  \item \textbf{Competitive bar.} Object-, attribute- and pose-based methods reach about 85--86\% AUROC~\cite{reiss2022attribute,hirschorn2023normalizing}, whereas pixel-level prediction methods lie roughly in the 72--77\% range~\cite{liu2018future,liu2021hybrid}.
+  \item \textbf{Novelty must be stated precisely.} Flow losses~\cite{liu2018future}, motion-conditioned diffusion~\cite{tur2023unsupervised,flaborea2023multimodal,zhou2025video} and physics-informed diffusion anomaly detectors for non-video data~\cite{sharma2025pidpm,soni2025pidm} already exist. The contribution lies in physics guidance at sampling time for video, a physics-residual anomaly score, and a systematic comparison of where the physics term is applied (Section~\ref{sec:closest}).
+  \item \textbf{Generalisation to new environments.} The standard ShanghaiTech protocol includes every test scene in training. Testing the claim of generalising to new environments requires a leave-scenes-out split on ShanghaiTech and the scene-disjoint split of UBnormal~\cite{acsintoae2022ubnormal}.
+  \item \textbf{Competitive bar.} Object-, attribute-, jigsaw- and pose-based methods reach about 84--86\% micro AUROC~\cite{reiss2022attribute,hirschorn2023normalizing,wang2022jigsaw}, diffusion-based methods about 78--79\%~\cite{yan2023feature,zhou2025video}, and pixel-level prediction methods roughly 72--77\%~\cite{liu2018future,liu2021hybrid}.
   \item \textbf{Inference cost.} Per-frame diffusion sampling is expensive. Few-step DDIM sampling~\cite{song2021ddim}, partial noising and latent-space diffusion~\cite{rombach2022ldm} can reduce this cost.
 \end{enumerate}
 
@@ -123,14 +193,17 @@ where $\tilde{\cdot}$ denotes per-video min--max normalisation, as in~\cite{liu2
 \midrule
 Pixel reconstruction & Conv-AE~\cite{hasan2016learning}, MemAE~\cite{gong2019memorizing}, MNAD~\cite{park2020learning} \\
 Frame / flow prediction & Liu \emph{et al.}~\cite{liu2018future}, HF$^2$-VAD~\cite{liu2021hybrid} \\
+Self-supervised / efficient & AED-MAE~\cite{ristea2024selfdistilled} \\
 Diffusion-based & FPDM~\cite{yan2023feature}, MoCoDAD~\cite{flaborea2023multimodal}, MA-PDM~\cite{zhou2025video} \\
 Kinematic / pose & Attribute-based~\cite{reiss2022attribute}, STG-NF~\cite{hirschorn2023normalizing} \\
+Ablation & Our model with all physics terms removed (same architecture and training budget) \\
 \bottomrule
 \end{tabularx}
-\caption{Suggested baselines on ShanghaiTech Campus.}
+\caption{Baselines, all run with official code on the same splits.}
 \end{table}
 
-\noindent\textbf{Metrics:} micro and macro frame-level AUROC; false-positive rate at 95\% true-positive rate (to answer the second research question); and the region- and track-based detection criteria RBDC and TBDC~\cite{ramachandra2020street}.\\
+\noindent\textbf{Datasets and splits:} ShanghaiTech Campus, CUHK Avenue and UCSD Ped2 under their standard protocols; a leave-scenes-out split of ShanghaiTech with three disjoint folds of 4, 4 and 5 scenes, rotated over all folds; and the scene-disjoint split of UBnormal using only its normal training videos.\\
+\textbf{Metrics:} micro and macro frame-level AUROC; false-positive rate at 95\% true-positive rate (to answer the second research question); and the region- and track-based detection criteria RBDC and TBDC~\cite{ramachandra2020street}.\\
 \textbf{Ablations:} each constraint $r_k$ on and off; physics applied in training only (Eq.~\ref{eq:pidm}), in sampling only (Eq.~\ref{eq:dps}), or in both; sweeps over $\lambda$ and $\zeta_t$; and robustness to synthetic lighting and noise perturbations.
 
 %=====================================================================
@@ -172,7 +245,7 @@ R.~T. Ionescu, F.~S. Khan, M.-I. Georgescu, and L.~Shao, ``Object-centric auto-e
 M.-I. Georgescu, A.~B{\u{a}}r{\u{a}}u, R.~T. Ionescu, F.~S. Khan, M.~Popescu, and M.~Shah, ``Anomaly detection in video via self-supervised and multi-task learning,'' in \emph{Proc. IEEE/CVF CVPR}, 2021, pp.~12742--12752.
 
 \bibitem{reiss2022attribute}
-T.~Reiss and Y.~Hoshen, ``Attribute-based representations for accurate and interpretable video anomaly detection,'' \emph{arXiv preprint arXiv:2212.00789}, 2022.
+T.~Reiss and Y.~Hoshen, ``An attribute-based method for video anomaly detection,'' \emph{Trans. Mach. Learn. Res.}, 2025. [Online]. Available: https://openreview.net/forum?id=XL1N6iLr0G
 
 \bibitem{morais2019learning}
 R.~Morais, V.~Le, T.~Tran, B.~Saha, M.~Mansour, and S.~Venkatesh, ``Learning regularity in skeleton trajectories for anomaly detection in videos,'' in \emph{Proc. IEEE/CVF CVPR}, 2019, pp.~11996--12004.
@@ -232,10 +305,10 @@ A.~Flaborea, L.~Collorone, G.~M.~D. di~Melendugno, S.~D'Arrigo, B.~Prenkaj, and 
 H.~Zhou, J.~Cai, Y.~Ye, Y.~Feng, C.~Gao, J.~Yu, Z.~Song, and W.~Yang, ``Video anomaly detection with motion and appearance guided patch diffusion model,'' in \emph{Proc. AAAI}, 2025.
 
 \bibitem{liu2025survey}
-J.~Liu \emph{et al.}, ``A survey on diffusion models for anomaly detection,'' \emph{arXiv preprint arXiv:2501.11430}, 2025.
+J.~Liu, Z.~Ma, Z.~Wang, C.~Zou, J.~Ren, Z.~Wang, L.~Song, B.~Hu, Y.~Liu, and V.~C.~M. Leung, ``A survey on diffusion models for anomaly detection,'' \emph{arXiv preprint arXiv:2501.11430}, 2025.
 
 \bibitem{surveyadg2025}
-``Anomaly detection and generation with diffusion models: A survey,'' \emph{arXiv preprint arXiv:2506.09368}, 2025.
+Y.~Liu, J.~Liu, C.~Li, R.~Xi, W.~Li, L.~Cao, J.~Wang, L.~T. Yang, J.~Yuan, and W.~Zhou, ``Anomaly detection and generation with diffusion models: A survey,'' \emph{arXiv preprint arXiv:2506.09368}, 2025.
 
 \bibitem{raissi2019pinn}
 M.~Raissi, P.~Perdikaris, and G.~E. Karniadakis, ``Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations,'' \emph{J. Comput. Phys.}, vol.~378, pp.~686--707, 2019.
@@ -259,7 +332,7 @@ S.~Liu, Z.~Ren, S.~Gupta, and S.~Wang, ``PhysGen: Rigid-body physics-grounded im
 L.~S. Aira, A.~Montanaro, E.~Aiello, D.~Valsesia, and E.~Magli, ``MotionCraft: Physics-based zero-shot video generation,'' in \emph{Proc. NeurIPS}, 2024.
 
 \bibitem{zhang2025diffphy}
-K.~Zhang \emph{et al.}, ``Think before you diffuse: Infusing physical rules into video diffusion,'' \emph{arXiv preprint arXiv:2505.21653}, 2025.
+K.~Zhang, C.~Xiao, J.~Xu, Y.~Mei, and V.~M. Patel, ``Think before you diffuse: Infusing physical rules into video diffusion,'' \emph{arXiv preprint arXiv:2505.21653}, 2025.
 
 \bibitem{teed2020raft}
 Z.~Teed and J.~Deng, ``RAFT: Recurrent all-pairs field transforms for optical flow,'' in \emph{Proc. ECCV}, 2020, pp.~402--419.
@@ -272,6 +345,38 @@ R.~Mehran, A.~Oyama, and M.~Shah, ``Abnormal crowd behavior detection using soci
 
 \bibitem{ramachandra2020street}
 B.~Ramachandra and M.~J. Jones, ``Street Scene: A new dataset and evaluation protocol for video anomaly detection,'' in \emph{Proc. IEEE WACV}, 2020, pp.~2569--2578.
+
+% --- Added after supervisor feedback (appended so that earlier numbers stay unchanged) ---
+
+\bibitem{lu2013abnormal}
+C.~Lu, J.~Shi, and J.~Jia, ``Abnormal event detection at 150 FPS in MATLAB,'' in \emph{Proc. IEEE ICCV}, 2013, pp.~2720--2727.
+
+\bibitem{mahadevan2010anomaly}
+V.~Mahadevan, W.~Li, V.~Bhalodia, and N.~Vasconcelos, ``Anomaly detection in crowded scenes,'' in \emph{Proc. IEEE CVPR}, 2010, pp.~1975--1981.
+
+\bibitem{acsintoae2022ubnormal}
+A.~Acsintoae, A.~Florescu, M.-I. Georgescu, T.~Mare, P.~Sumedrea, R.~T. Ionescu, F.~S. Khan, and M.~Shah, ``UBnormal: New benchmark for supervised open-set video anomaly detection,'' in \emph{Proc. IEEE/CVF CVPR}, 2022.
+
+\bibitem{cao2023new}
+C.~Cao, Y.~Lu, P.~Wang, and Y.~Zhang, ``A new comprehensive benchmark for semi-supervised video anomaly detection and anticipation,'' in \emph{Proc. IEEE/CVF CVPR}, 2023.
+
+\bibitem{wang2022jigsaw}
+G.~Wang, Y.~Wang, J.~Qin, D.~Zhang, X.~Bao, and D.~Huang, ``Video anomaly detection by solving decoupled spatio-temporal jigsaw puzzles,'' in \emph{Proc. ECCV}, 2022.
+
+\bibitem{ristea2024selfdistilled}
+N.-C. Ristea, F.-A. Croitoru, R.~T. Ionescu, M.~Popescu, F.~S. Khan, and M.~Shah, ``Self-distilled masked auto-encoders are efficient video anomaly detectors,'' in \emph{Proc. IEEE/CVF CVPR}, 2024.
+
+\bibitem{flaborea2024coskad}
+A.~Flaborea, G.~M.~D. di~Melendugno, S.~D'Arrigo, M.~A. Sterpa, A.~Sampieri, and F.~Galasso, ``Contracting skeletal kinematics for human-related video anomaly detection,'' \emph{Pattern Recognit.}, 2024.
+
+\bibitem{sharma2025pidpm}
+A.~Sharma, M.~Yang, M.~Farhadloo, S.~Ghosh, B.~Jayaprakash, and S.~Shekhar, ``Towards physics-informed diffusion for anomaly detection in trajectories,'' \emph{arXiv preprint arXiv:2506.06999}, 2025; also in \emph{Proc. ACM SIGSPATIAL Int. Workshop on Geospatial Anomaly Detection (GeoAnomalies)}, 2025.
+
+\bibitem{soni2025pidm}
+J.~Soni, M.~Lange-Hegermann, and S.~Windmann, ``Physics-informed diffusion models for unsupervised anomaly detection in multivariate time series,'' \emph{arXiv preprint arXiv:2508.11528}, 2025.
+
+\bibitem{yuan2023physdiff}
+Y.~Yuan, J.~Song, U.~Iqbal, A.~Vahdat, and J.~Kautz, ``PhysDiff: Physics-guided human motion diffusion model,'' in \emph{Proc. IEEE/CVF ICCV}, 2023.
 
 \end{thebibliography}
 
