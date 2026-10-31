@@ -1,4 +1,4 @@
-# VAD-PhysDiff
+﻿# VAD-PhysDiff
 
 Physics-informed diffusion models for unsupervised video anomaly detection.
 URECA project, NTU — supervisor: Prof Wang Lipo.
@@ -24,7 +24,7 @@ Datasets live outside the repo; set their paths in `configs/paths.yaml`.
 | Folder | Contents |
 |---|---|
 | `data/` | Dataset loaders (clips of past frames + target frame) |
-| `models/` | Our physics-informed latent diffusion model |
+| `physdiff/` | Our physics-informed latent diffusion model |
 | `baselines/` | Wrappers and notes for reproduced baselines |
 | `eval/` | Shared metrics: micro/macro AUROC, FPR@95TPR, per-video AUROC |
 | `configs/` | Dataset paths and leave-scenes-out folds |
