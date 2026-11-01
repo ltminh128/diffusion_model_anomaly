@@ -1,0 +1,21 @@
+{
+  "data_root": "C:/Users/Admin/datasets/shanghaitech",
+  "iters": 80000,
+  "batch_size": 4,
+  "g_lr": 0.0002,
+  "d_lr": 2e-05,
+  "lr_decay_at": 50000,
+  "lam_int": 1.0,
+  "lam_grad": 1.0,
+  "lam_flow": 2.0,
+  "lam_adv": 0.05,
+  "raft_iters": 12,
+  "seed": 0,
+  "workers": 4,
+  "save_every": 5000,
+  "eval_every": 20000,
+  "max_test_videos": null,
+  "out": "C:\\Users\\Admin\\VAD-PhysDiff\\outputs\\liu2018",
+  "resume": "C:\\Users\\Admin\\VAD-PhysDiff\\outputs\\liu2018\\seed0\\latest.pt",
+  "eval_only": false
+}
