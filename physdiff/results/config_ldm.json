@@ -1,0 +1,18 @@
+{
+  "data_root": "C:/Users/Admin/datasets/shanghaitech",
+  "ae_ckpt": "C:\\Users\\Admin\\VAD-PhysDiff\\outputs\\physdiff\\ae\\seed0\\latest.pt",
+  "iters": 40000,
+  "batch_size": 8,
+  "lr": 0.0001,
+  "ema": 0.999,
+  "grad_clip": 1.0,
+  "ddim_steps": 10,
+  "seed": 0,
+  "workers": 4,
+  "save_every": 1000,
+  "eval_every": -1,
+  "max_test_videos": null,
+  "out": "C:\\Users\\Admin\\VAD-PhysDiff\\outputs\\physdiff\\ldm_nophysics",
+  "resume": "C:\\Users\\Admin\\VAD-PhysDiff\\outputs\\physdiff\\ldm_nophysics\\seed0\\latest.pt",
+  "eval_only": false
+}

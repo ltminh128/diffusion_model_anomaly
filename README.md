@@ -33,4 +33,4 @@ Datasets live outside the repo; set their paths in `configs/paths.yaml`.
 
 ## Status
 - [x] Reproduce Liu et al. (CVPR 2018) on ShanghaiTech: 70.2% micro / 80.2% macro AUROC at the fixed endpoint, 72.6% when selected on the test set as the paper does (published 72.8%). See `baselines/liu2018/NOTES.md`.
-- [ ] Physics-free latent diffusion baseline on ShanghaiTech
+- [x] Physics-free latent diffusion baseline on ShanghaiTech: 72.2% micro / 81.8% macro AUROC scored against the real frame, as Liu et al. do; 66.8% micro / 80.0% macro scored against the autoencoder's reconstruction, the score chosen as primary before testing. Read the reference-frame section of `physdiff/NOTES.md` before quoting either.

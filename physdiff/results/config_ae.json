@@ -1,0 +1,16 @@
+{
+  "data_root": "C:/Users/Admin/datasets/shanghaitech",
+  "iters": 20000,
+  "batch_size": 8,
+  "lr": 0.0002,
+  "lam_grad": 1.0,
+  "lam_kl": 1e-06,
+  "z_ch": 8,
+  "seed": 0,
+  "workers": 4,
+  "save_every": 2000,
+  "sample_every": 20,
+  "max_test_videos": null,
+  "out": "C:\\Users\\Admin\\VAD-PhysDiff\\outputs\\physdiff\\ae",
+  "resume": null
+}
